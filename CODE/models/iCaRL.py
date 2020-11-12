@@ -383,6 +383,67 @@ class iCaRL() :
             print('Accuracy on eval NME'+str(suffix)+':', accuracy_eval)
 
         return accuracy_eval
+    
+    def eval_model_KNN(self, net, KNN_dataloader, test_dataloader, dataset_length, display=True, suffix='', k=5):
+
+        X_train = []
+        y_train = []
+        
+        for images,labels in KNN_dataloader:
+            images = images.to(self.device)
+            labels = labels.to(self.device)
+
+            net.train(False)
+
+            # feature map (custom)
+            features = net.feature_map(images)
+
+            # normalization
+            #features = self.L2_norm(features)
+
+            for f in features:
+              f = f.to('cpu')
+              X_train.append(f.numpy())
+
+            for l in labels:
+              l = l.to('cpu')
+              y_train.append(l.numpy())
+
+        KNN = KNeighborsClassifier(n_neighbors=k)
+        KNN.fit(X_train, y_train)
+
+        X_test = []
+        y_test = []
+
+        running_corrects = 0
+        for images,labels in test_dataloader:
+            # Bring data over the device of choice
+            images = images.to(self.device)
+            labels = labels.to(self.device)
+
+            net.train(False)
+
+            # feature map (custom)
+            features = net.feature_map(images)
+
+            # normalization
+            #features = self.L2_norm(features)
+
+            for f in features:
+              f = f.to('cpu')
+              X_test.append(f.numpy())
+
+            for l in labels:
+              l = l.to('cpu')
+              y_test.append(l.numpy())
+
+        y_pred = KNN.predict(X_test)
+        accuracy_KNN = metrics.accuracy_score(y_test, y_pred)
+
+        if display :    
+            print('Accuracy on eval (KNN)'+str(suffix)+':', accuracy_KNN)
+
+        return accuracy_KNN
 
     def update_representation(self, net, net_old, train_dataloader_cum_exemplars, criterion, optimizer, current_classes, starting_label, ending_label, current_step, bce_var=1, loss_type='bce', alpha=100, k_dinamico=False, k_dinamico_var='standard', boost_until_included=None) :
         FIRST = True
